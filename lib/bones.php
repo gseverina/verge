@@ -26,6 +26,8 @@ class Bones {
     public $method = '';
     public $content = '';
     public $vars = array();
+    public $route_segments = array();
+    public $route_variables = array();
 
     public static function get_instance() {
         if(!isset(self::$instance)) {
@@ -36,6 +38,7 @@ class Bones {
 
     public function __construct() {
         $this->route = $this->get_route();
+        $this->route_segments = explode('/', trim($this->route, '/'));
         $this->method = $this->get_method();
     }
 
@@ -49,7 +52,8 @@ class Bones {
     }
 
     protected function get_method() {
-        return isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET';
+        return isset($_SERVER['REQUEST_METHOD'])
+            ? $_SERVER['REQUEST_METHOD'] : 'GET';
     }
 
     public function set($index, $value) {
@@ -68,16 +72,6 @@ class Bones {
         }
     }
 
-    public static function register($route, $callback, $method) {
-        $bones = static::get_instance();
-        if($route == $bones->route && !static::$route_found && $bones->method == $method) {
-            static::$route_found = true;
-            echo $callback($bones);
-        } else {
-            return false;
-        }
-    }
-
     public function form($key) {
         return $_POST[$key];
     }
@@ -90,4 +84,42 @@ class Bones {
             return '/' . $url[1] . $path;
         }
     }
+
+    public function request($key) {
+        return $this->route_variables[$key];
+    }
+
+    public static function register($route, $callback, $method)
+    {
+        if (!static::$route_found) {
+            $bones = static::get_instance();
+            $url_parts = explode('/', trim($route, '/'));
+            $matched = null;
+            if (count($bones->route_segments) == count($url_parts)) {
+                foreach ($url_parts as $key => $part) {
+                    if (strpos($part, ":") !== false) {
+                        $bones->route_variables[substr($part, 1)] =
+                            $bones->route_segments[$key];
+                    } else {
+                        if ($part == $bones->route_segments[$key]) {
+                            if (!$matched) {
+                                $matched = true;
+                            }
+                        } else {
+                            $matched = false;
+                        }
+                    }
+                }
+            } else {
+                $matched = false;
+            }
+            if(!$matched || $bones->method != $method) {
+                return false;
+            } else {
+                static::$route_found = true;
+                echo $callback($bones);
+            }
+        }
+    }
+
 }
