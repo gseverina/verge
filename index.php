@@ -11,10 +11,11 @@ get(('/signup'), function ($app) {
 });
 
 post('/signup', function($app) {
-    $user = new stdClass;
-    $user->type = 'user';
+    $user = new User();
     $user->name = $app->form('name');
     $user->email = $app->form('email');
+    $app->couch->post($user->to_json());
+    /*
     echo json_encode($user);
 
     $curl = curl_init();
@@ -32,7 +33,7 @@ post('/signup', function($app) {
     curl_setopt_array($curl, $options);
     curl_exec($curl);
     curl_close($curl);
-
+    */
     $app->set('message', 'Thanks for Signing Up ' . $app->form('name') . '!');
     $app->render('home');
 });
